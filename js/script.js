@@ -8,8 +8,11 @@ function handleSubmit(e){
     searchForm.reset();
 }
 
-const endpoint = 'https://forkify-api.herokuapp.com/api/search?q=';
-const input = 'pizza'
+// const endpoint = 'https://forkify-api.herokuapp.com/api/search?q=';
+const endpoint = 'https://forkify-api.herokuapp.com/api/get?rId=';
+// const input = 'pizza'
+const input = '47746'
+
 let list = [];
 async function getRecipe() {
     list = [];
