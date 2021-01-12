@@ -32,9 +32,6 @@ async function getRecipe() {
         list = []
         console.log(list)
         
-        // json.recipes.forEach(recipe => {
-        //     console.log(recipe)
-        // });
 	} catch (err) {
 		console.log(err)
 		alert('Failed to get recipe');
