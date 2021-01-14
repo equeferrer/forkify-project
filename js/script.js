@@ -1,86 +1,58 @@
-// Event Listener for Search Form on Submit
+// acts as storage
+const state = {}
+
+/* ---------------------- QUERY SELECTORS ---------------------- */
 const searchForm = document.querySelector(".search");
-let query = document.querySelector(".search__field");
-searchForm.addEventListener('submit', handleSubmit);
-function handleSubmit(e){
-    // Prevent refreshing page
+const queryField = document.querySelector(".search__field");
+const resPages = document.querySelector(".results__pages");
+const resList = document.querySelector('.results__list');
+const resRecipe = document.querySelector('.recipe');
+
+/* ---------------------- EVENT LISTENERS ---------------------- */
+// For Search Form on Submit
+searchForm.addEventListener('submit', e => {
+    controlSearch();
     e.preventDefault();
-    console.log(query.value); 
-    // SEARCH request
-    getRecipes();
-    // Clear text in form value
-    searchForm.reset();
-}
+});
 
-const endpoint = 'https://forkify-api.herokuapp.com/api/v2/recipes?search=';
-async function getRecipes() {
-    document.querySelector('.results__list').innerHTML = ""
-    // get change endpoint based on word search
-    console.log(endpoint+query.value)
-	try {
-        const response = await fetch(endpoint+query.value)
-		if (!response.ok) {
-			throw Error(response.statusText)
-		}
-        const json = await response.json();
-        json.data.recipes.forEach(recipe => {
-            console.log(recipe)
-            recipe = new Recipe(recipe.title, recipe.publisher, recipe.image_url, recipe.id)
-            recipe.createItem()
-        });
-
-	} catch (err) {
-		console.log(err)
-		alert('Failed to get recipe');
-	}
-}
-
-let Recipe = class {
-    constructor(title, publisher, pictureURL, id) {
-        this.title = title;
-        this.publisher = publisher;
-        this.pictureURL = pictureURL;
-        this.id = id;
-        // can add link recipe to store value of ID with link recipe this.linkRecipe = linkRecipe
-        // this.linkDirections = linkDirections;
-        // can add recipe Item if using a new class per recipe this.recipeItem = recipeItem;
-    } 
-    
-    createItem(){
-            const recipeItem = `
-                <li>
-                    <a class="results__link" href="#" onclick='selectRecipe("${this.id}")'>
-                        <figure class="results__fig">
-                            <img src="${this.pictureURL}" alt="Test">
-                        </figure>
-                        <div class="results__data">
-                            <h4 class="results__name">${this.title}</h4>
-                            <p class="results__author">${this.publisher}</p>
-                        </div>
-                    </a>
-                </li>   
-                `;
-            const recipeListDiv = document.querySelector('.results__list');
-            recipeListDiv.insertAdjacentHTML('afterbegin',recipeItem);
+// For next pages
+resPages.addEventListener("click", e => {
+    const btn = e.target.closest(".btn-inline");
+    if (btn){
+        clearResults();      
+        displayResults(state.search.result, parseInt(btn.dataset.goto));    
     }
-};
+});
 
-// MIDDLE DIV
-
-function selectRecipe(recipe_id) {
-    document.querySelector('.recipe').innerHTML = "";
-    let newRecipe = new RecipeDetails(recipe_id);
-    newRecipe.showRecipe();
-    // console.log(recipe_id);
-
+/* ---------------------- CLASSES ---------------------- */
+let Search = class {
+    constructor(query) {
+        this.query = query;
+    }
+    async getResults() {
+        try {
+            const res = await fetch(`https://forkify-api.herokuapp.com/api/v2/recipes?search=${this.query}`);
+            const thisData = await res.json();
+            this.result = thisData.data.recipes;
+        } catch (error) {
+            alert(error);
+        }
+    }
 }
 
+// let Recipe = class {
+//     constructor(title, publisher, pictureURL, id) {
+//         this.title = title;
+//         this.publisher = publisher;
+//         this.pictureURL = pictureURL;
+//         this.id = id;
+//     } 
+// };
 
 let RecipeDetails = class {
     constructor(id) {
         this.id = id;
     }
-
     async showRecipe() {
         try {
             const res = await fetch(`https://forkify-api.herokuapp.com/api/v2/recipes/${this.id}`);
@@ -94,12 +66,7 @@ let RecipeDetails = class {
             this.unit = thisData.data.recipe.ingredients.unit;
             this.description = thisData.data.recipe.ingredients.description;
             this.servings = thisData.data.recipe.servings;
-            this.cookingTime = thisData.data.recipe.cooking_time;
-            console.log(this.title);
-            console.log(this.publisher);
-            console.log(this.pictureURL);
-            console.log(this.linkDirections);
-            console.log(this.ingredients);          
+            this.cookingTime = thisData.data.recipe.cooking_time; 
 
             const createIngredient = ingredient =>
             `
@@ -201,3 +168,107 @@ let RecipeDetails = class {
 }   
 
 
+/* ---------------------- FUNCTIONS ---------------------- */
+async function controlSearch(){
+    const query = queryField.value;
+    if (query){
+        // New Search Object
+        state.search = new Search(query)
+        searchForm.reset();
+        clearResults();
+        showLoader(resList)
+        // render loader here
+
+        try {
+            await state.search.getResults()
+            displayResults(state.search.result);
+            clearLoader()
+        } catch (err) {
+            alert("Something wrong with the search..");
+            console.log(err);
+            clearLoader();
+        }
+    }
+}
+
+function createItem(recipe){
+    const recipeItem = `
+        <li>
+            <a class="results__link" href="#" onclick='selectRecipe("${recipe.id}")'>
+                <figure class="results__fig">
+                    <img src="${recipe.image_url}" alt="Test">
+                </figure>
+                <div class="results__data">
+                    <h4 class="results__name">${recipe.title}</h4>
+                    <p class="results__author">${recipe.publisher}</p>
+                </div>
+            </a>
+        </li>   
+        `;
+    const recipeListDiv = document.querySelector('.results__list');
+    recipeListDiv.insertAdjacentHTML('afterbegin',recipeItem);
+}
+
+function displayResults(items, page = 1, limit = 10){
+    //show results of current page
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    items.slice(startIndex, endIndex).forEach(createItem);  
+    //show page buttons
+    displayButtons(page, items.length, limit);
+};
+
+function displayButtons(page, totalResults, limit){
+    const pages = Math.ceil(totalResults / limit);
+    // type: prev or next
+    const createButton = (page, type) => 
+    `
+        <button class="btn-inline results__btn--${type}" data-goto=${type === "prev" ? page - 1 : page + 1}>
+            <span>Page ${type === "prev" ? page - 1 : page + 1}</span>
+            <svg class="search__icon">
+                <use href="img/icons.svg#icon-triangle-${type === "prev" ? "left" : "right"}"></use>
+            </svg>
+        </button>
+    `;
+    let button;
+    if (page === 1 && pages > 1) {
+        button = createButton(page, "next");
+    } else if (page < pages) {
+        button = `
+            ${createButton(page, "prev")}
+            ${createButton(page, "next")}
+        `;
+    } else if (page === pages && pages > 1) {
+        button = createButton(page, "prev");
+    } else {
+        return
+    }
+    resPages.insertAdjacentHTML("afterbegin", button);
+};
+
+function clearResults(){
+    resList.innerHTML = ""
+    resPages.innerHTML=""
+}
+
+function selectRecipe(recipe_id) {
+    resRecipe.innerHTML = "";
+    let newRecipe = new RecipeDetails(recipe_id);
+    newRecipe.showRecipe();
+}
+
+function showLoader(parent){
+    const loader = `
+     <div class="loader">
+        <svg>
+           <use href='img/icons.svg#icon-cw'></use>
+        </svg>
+     </div>
+     `;
+    parent.insertAdjacentHTML("afterbegin", loader);
+};
+  
+function clearLoader(){
+    const loader = document.querySelector('.loader');
+    if (loader) loader.parentElement.removeChild(loader);
+};
