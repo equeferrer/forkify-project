@@ -27,6 +27,17 @@ resPages.addEventListener("click", e => {
     }
 });
 
+// for updating servings
+resRecipe.addEventListener("click", e => {
+    const servingsBtn = e.target.closest('.btn-tiny')
+    if (!servingsBtn) return;
+
+    const updateNum = +servingsBtn.dataset.update; // '+' to convert to a number
+    if (updateNum > 0) {
+        updateServings(updateNum);
+    }
+})
+
 // for the shopping list
 shopList.addEventListener("click", e => {
     const shop = e.target.closest(".shopping__delete");
@@ -65,7 +76,7 @@ let Search = class {
                 recipeListDiv.insertAdjacentHTML('afterbegin',recipeItem);
             }
         } catch (error) {
-            alert(error);
+            alert("Something went wrong");
         }
     }
 }
@@ -84,6 +95,12 @@ let RecipeDetails = class {
             alert("Something went wrong");
         }
     }
+
+    // hightlightRecipe() {
+    //     if (this.selected === true) {
+    //         document.querySelector(`.results__link[href*="${this.id}"]`).classList.add('results__link--active');
+    //     }
+    // }
 }
 
 let Bookmark = class {
@@ -141,23 +158,42 @@ async function controlSearch(){
 async function selectRecipe(recipe_id) {
     resRecipe.innerHTML = "";
     state.newRecipe = new RecipeDetails(recipe_id);
+    // document.querySelector('.results__link').classList.remove('results__link--active');
     showLoader(resRecipe);
     try {
         await state.newRecipe.getRecipe();
         createRecipe(state.newRecipe.result);
+        // state.newRecipe.selected = true;
+        // state.newRecipe.highlightRecipe();
         clearLoader();
     } catch (err) {
-        alert(err);
+        // alert(err);
         console.log(err);
         clearLoader();
     }
 }
 
+
+function highlightSelected(id) {
+    const highlight = Array.from(document.querySelectorAll(".results__link"));
+    highlight.forEach(el => el.classList.remove("results__link--active"));
+    document.querySelector(`.results__link[href="#${id}"]`).classList.add("results__link--active");
+}
+
+function controlRecipe() {
+    const id = window.location.hash.replace("#", "");
+    if (id) {
+        if (state.search) highlightSelected(id);
+    }
+}
+
+["hashchange", "load"].forEach(event => window.addEventListener(event, controlRecipe));
+
 function createItem(recipe){
     const recipeItem = 
         `
             <li>
-                <a class="results__link" href="#" onclick='selectRecipe("${recipe.id}")'>
+                <a class="results__link" href="#${recipe.id}" onclick='selectRecipe("${recipe.id}")'>
                     <figure class="results__fig">
                         <img src="${recipe.image_url}" alt="${recipe.title}">
                     </figure>
@@ -194,7 +230,17 @@ function createRecipe(item) {
         iconString = "icon-heart-outlined"
     } else if (state.bookmark.isLiked(currentID)){
         iconString = "icon-heart"
-    }    
+    }
+    
+    // null will not be shown for quantity
+    const thisQty = state.newRecipe.result.ingredients;
+    thisQty.forEach(i => {
+        if (i.quantity === null) {
+            i.quantity = "";
+        }
+    })
+
+
     const recipeList = 
         `
             <figure class="recipe__fig">
@@ -219,12 +265,12 @@ function createRecipe(item) {
                     <span class="recipe__info-text"> servings</span>
 
                     <div class="recipe__info-buttons">
-                        <button class="btn-tiny">
+                        <button class="btn-tiny" data-update="${item.servings-1}">
                             <svg>
                                 <use href="img/icons.svg#icon-circle-with-minus"></use>
                             </svg>
                         </button>
-                        <button class="btn-tiny">
+                        <button class="btn-tiny" data-update="${item.servings+1}">
                             <svg>
                                 <use href="img/icons.svg#icon-circle-with-plus"></use>
                             </svg>
@@ -328,6 +374,11 @@ function clearLoader(){
     if (loader) loader.parentElement.removeChild(loader);
 };
 
+// function highlightSelected(){
+//     const highlight = document.querySelector('.results__link');
+//     if (highlight) highlight.parentElement.classList.add('results__link--active');
+// }
+
 function addToList() {
     let ingredient = state.newRecipe.result.ingredients;
     for (let i=0; i<ingredient.length; i++) {
@@ -341,7 +392,8 @@ function addToList() {
             let listItem = document.querySelector(`[data-itemid=${ingredient[i].description.replace(/ /g, "-")}]`)
             listItem.firstElementChild.firstElementChild.value = `${parseFloat(state.shoppingList[index].quantity) + ingredient[i].quantity}`
             state.shoppingList[index].quantity = state.shoppingList[index].quantity + ingredient[i].quantity
-            console.log(ingredient[i])
+            console.log(ingredient[i].quantity)
+            console.log(state.shoppingList[index].quantity);
 
             // const a = state.newRecipe.result.ingredients.findIndex(el => el.description === ingredient[i].description)
             // console.log(state.newRecipe.result.ingredients[a])
@@ -379,6 +431,29 @@ function showShoppingList(item) {
     const shoppingDiv = document.querySelector('.shopping__list');
     shoppingDiv.insertAdjacentHTML('afterbegin', shoppingList);
 }
+
+function updateQuantity(newNum) {
+    // updating ingredients list based on number of servings
+    let ingredient = state.newRecipe.result.ingredients;
+    let servings = state.newRecipe.result.servings;
+
+    ingredient.forEach(num => {
+        if (num.quantity === "") {
+            num.quantity = "";
+        } else {
+            num.quantity = (num.quantity * newNum) / servings; // (previousQty * newQty) / defaultNumberOfServing
+            state.newRecipe.result.servings = newNum;
+        }
+    })
+}
+
+function updateServings(newQty) {
+    // updating recipe preview (middle div)
+    updateQuantity(newQty);
+    resRecipe.innerHTML = "";
+    createRecipe(state.newRecipe.result);
+}
+
 
 function controlLike() {
     if (!state.bookmark) {
