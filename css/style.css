@@ -451,7 +451,7 @@ body {
   .shopping__list {
     list-style: none;
     max-height: 77rem;
-    overflow: scroll; }
+    overflow-y: scroll; }
   .shopping__item {
     display: flex;
     align-items: flex-start;
@@ -498,3 +498,22 @@ body {
   .shopping__item:hover .shopping__delete {
     opacity: 1;
     visibility: visible; }
+
+
+.likes__error, .search__error{
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  text-align: center;
+  justify-content: center;
+}
+
+.search__error{
+  padding-top: 20rem;
+}
+
+.likes__error__text, .search__error__text{
+  font-weight:800;
+  font-size: 1.3rem;
+  padding-left: 1rem;
+}
