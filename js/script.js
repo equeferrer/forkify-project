@@ -90,17 +90,12 @@ let RecipeDetails = class {
             const res = await fetch(`https://forkify-api.herokuapp.com/api/v2/recipes/${this.id}`);
             const thisData = await res.json();
             this.result = thisData.data.recipe;
+            this.result.ingredients.forEach(ing => ing.step = ing.quantity);
     } catch (err) {
             console.log(err);
             alert("Something went wrong");
         }
     }
-
-    // hightlightRecipe() {
-    //     if (this.selected === true) {
-    //         document.querySelector(`.results__link[href*="${this.id}"]`).classList.add('results__link--active');
-    //     }
-    // }
 }
 
 let Bookmark = class {
@@ -158,13 +153,10 @@ async function controlSearch(){
 async function selectRecipe(recipe_id) {
     resRecipe.innerHTML = "";
     state.newRecipe = new RecipeDetails(recipe_id);
-    // document.querySelector('.results__link').classList.remove('results__link--active');
     showLoader(resRecipe);
     try {
         await state.newRecipe.getRecipe();
         createRecipe(state.newRecipe.result);
-        // state.newRecipe.selected = true;
-        // state.newRecipe.highlightRecipe();
         clearLoader();
     } catch (err) {
         // alert(err);
@@ -215,7 +207,7 @@ function createRecipe(item) {
                     <svg class="recipe__icon">
                         <use href="img/icons.svg#icon-check"></use>
                     </svg>
-                    <div class="recipe__count">${ingredient.quantity}</div>
+                    <div class="recipe__count">${ingredient.step}</div>
                     <div class="recipe__ingredient">
                         <span class="recipe__unit">${ingredient.unit}</span>
                         ${ingredient.description}
@@ -235,8 +227,8 @@ function createRecipe(item) {
     // null will not be shown for quantity
     const thisQty = state.newRecipe.result.ingredients;
     thisQty.forEach(i => {
-        if (i.quantity === null) {
-            i.quantity = "";
+        if (i.step === null) {
+            i.step = "";
         }
     })
 
@@ -374,15 +366,11 @@ function clearLoader(){
     if (loader) loader.parentElement.removeChild(loader);
 };
 
-// function highlightSelected(){
-//     const highlight = document.querySelector('.results__link');
-//     if (highlight) highlight.parentElement.classList.add('results__link--active');
-// }
-
 function addToList() {
     let ingredient = state.newRecipe.result.ingredients;
     for (let i=0; i<ingredient.length; i++) {
         let found = state.shoppingList.some(elem => elem.description === ingredient[i].description);
+        // let unit = state.shoppingList.some(elem => elem.unit === ingredient[i].unit)
         if (!found){
             state.shoppingList.push(ingredient[i])
             showShoppingList(ingredient[i])
@@ -390,24 +378,10 @@ function addToList() {
         } else if (found) {         
             const index = state.shoppingList.findIndex(el => el.description === ingredient[i].description);
             let listItem = document.querySelector(`[data-itemid=${ingredient[i].description.replace(/ /g, "-")}]`)
-            listItem.firstElementChild.firstElementChild.value = `${parseFloat(state.shoppingList[index].quantity) + ingredient[i].quantity}`
-            state.shoppingList[index].quantity = state.shoppingList[index].quantity + ingredient[i].quantity
-            console.log(ingredient[i].quantity)
+            listItem.firstElementChild.firstElementChild.value = `${parseFloat(state.shoppingList[index].quantity) + ingredient[i].step}`
+            state.shoppingList[index].quantity = state.shoppingList[index].quantity + ingredient[i].step
+            console.log(ingredient[i].step)
             console.log(state.shoppingList[index].quantity);
-
-            // const a = state.newRecipe.result.ingredients.findIndex(el => el.description === ingredient[i].description)
-            // console.log(state.newRecipe.result.ingredients[a])
-            // console.log("Values before:", state.shoppingList[index].quantity, ingredient[i].quantity ,ingredient[i].description)
-            // console.log("Added Value:", state.shoppingList[index].quantity += ingredient[i].quantity);
-            // let total = ingredient[i].quantity + state.shoppingList[index].quantity
-            // state.shoppingList[index].quantity = total
-            // state.shoppingList[index].quantity += state.newRecipe.result.ingredients[a].quantity
-            // state.shoppingList[index].quantity += state.shoppingList[index].quantity    
-            // state.shoppingList.splice(index,1);
-            // state.shoppingList.push(ingredient[i])
-            // ingredient[i].quantity = ingredient[i].quantity;
-            // console.log(state.shoppingList[index])
-            // console.log(state.newRecipe.result.ingredients[a])
         }
     }
 }
@@ -417,7 +391,7 @@ function showShoppingList(item) {
         `
             <li class="shopping__item" data-itemid=${item.description.replace(/ /g, "-")}>
                 <div class="shopping__count">
-                    <input type="number" value="${item.quantity}" step="${item.quantity/4}">
+                    <input type="number" value="${item.step}" step="${item.step/4}">
                     <p>${item.unit}</p>
                 </div>
                 <p class="shopping__description">${item.description}</p>
@@ -438,10 +412,10 @@ function updateQuantity(newNum) {
     let servings = state.newRecipe.result.servings;
 
     ingredient.forEach(num => {
-        if (num.quantity === "") {
-            num.quantity = "";
+        if (num.step === "") {
+            num.step = "";
         } else {
-            num.quantity = (num.quantity * newNum) / servings; // (previousQty * newQty) / defaultNumberOfServing
+            num.step = (num.step * newNum) / servings; // (previousQty * newQty) / defaultNumberOfServing
             state.newRecipe.result.servings = newNum;
         }
     })
@@ -480,7 +454,6 @@ function toggleLikeBtn(isLiked) {
     
 function toggleLikeMenu(numLikes){
     if (numLikes === 0){
-        // document.querySelector(".likes__test").style.visibility = "visible"
         document.querySelector(".likes__error").style.display = "flex"
     } else {
         document.querySelector(".likes__error").style.display = "none"
@@ -512,3 +485,7 @@ function deleteLike(id) {
         el.parentElement.removeChild(el);
     }
 };
+
+let frac = new Fraction(0.3435);
+
+console.log(frac.toString());
