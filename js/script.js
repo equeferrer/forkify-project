@@ -91,6 +91,8 @@ let RecipeDetails = class {
             const thisData = await res.json();
             this.result = thisData.data.recipe;
             this.result.ingredients.forEach(ing => ing.step = ing.quantity);
+            this.result.ingredients.forEach(ing => ing.frac = numberToFraction(ing.quantity));
+
     } catch (err) {
             console.log(err);
             alert("Something went wrong");
@@ -229,6 +231,8 @@ function createRecipe(item) {
     thisQty.forEach(i => {
         if (i.step === null) {
             i.step = "";
+        } else {
+            i.step = i.frac
         }
     })
 
@@ -372,16 +376,17 @@ function addToList() {
         let found = state.shoppingList.some(elem => elem.description === ingredient[i].description);
         // let unit = state.shoppingList.some(elem => elem.unit === ingredient[i].unit)
         if (!found){
+            ingredient[i].step = toDecimal(`${ingredient[i].step}`)
             state.shoppingList.push(ingredient[i])
             showShoppingList(ingredient[i])
-            console.log(state.shoppingList)
+            // console.log(state.shoppingList)
         } else if (found) {         
             const index = state.shoppingList.findIndex(el => el.description === ingredient[i].description);
             let listItem = document.querySelector(`[data-itemid=${ingredient[i].description.replace(/ /g, "-")}]`)
-            listItem.firstElementChild.firstElementChild.value = `${parseFloat(state.shoppingList[index].quantity) + ingredient[i].step}`
-            state.shoppingList[index].quantity = state.shoppingList[index].quantity + ingredient[i].step
-            console.log(ingredient[i].step)
-            console.log(state.shoppingList[index].quantity);
+            listItem.firstElementChild.firstElementChild.value = parseFloat(state.shoppingList[index].quantity) + parseFloat(toDecimal(`${ingredient[i].step}`))
+            state.shoppingList[index].quantity = state.shoppingList[index].quantity + parseFloat(toDecimal(`${ingredient[i].step}`))
+            // console.log(toDecimal(`${ingredient[i].step}`))
+            // console.log(state.shoppingList[index].quantity);
         }
     }
 }
@@ -415,8 +420,9 @@ function updateQuantity(newNum) {
         if (num.step === "") {
             num.step = "";
         } else {
-            num.step = (num.step * newNum) / servings; // (previousQty * newQty) / defaultNumberOfServing
+            num.step = (toDecimal(`${num.step}`) * newNum) / servings; // (previousQty * newQty) / defaultNumberOfServing
             state.newRecipe.result.servings = newNum;
+            num.frac = numberToFraction((toDecimal(`${num.frac}`) * newNum) / servings)
         }
     })
 }
@@ -486,6 +492,62 @@ function deleteLike(id) {
     }
 };
 
-let frac = new Fraction(0.3435);
+function numberToFraction(amount) {
+    if (!isNaN(amount)){
+        return amount
+    }
+	// This is a whole number and doesn't need modification.
+	if (parseFloat(amount) === parseInt(amount) ) {
+		return amount;
+	}
+	let gcd = function(a, b) {
+		if (b < 0.0000001) {
+			return a;
+		}
+		return gcd(b, Math.floor(a % b));
+	};
+	var len = amount.toString().length - 2;
+	var denominator = Math.pow(10, len);
+	var numerator = amount * denominator;
+	var divisor = gcd(numerator, denominator);
+	numerator /= divisor;
+	denominator /= divisor;
+	var base = 0;
+	// In a scenario like 3/2, convert to 1 1/2
+	// by pulling out the base number and reducing the numerator.
+	if ( numerator > denominator ) {
+		base = Math.floor( numerator / denominator );
+		numerator -= base * denominator;
+	}
+	amount = Math.floor(numerator) + '/' + Math.floor(denominator);
+	if ( base ) {
+		amount = base + ' ' + amount;
+	}
+	return amount;
+};
 
-console.log(frac.toString());
+// console.log(numberToFraction(0.5))
+// console.log(numberToFraction(0.375))
+// console.log(toDecimal(`${numberToFraction(0.5)}`))
+
+function toDecimal(x) {
+    if ( parseFloat( x ) === parseInt( x ) && x%1=== 0) {
+		return x;
+	} else if (x.indexOf('/') !== -1) {
+        var parts = x.split(" ")
+        var decParts;
+        if (parts.length > 1) {
+            decParts = parts[1].split("/");
+        }
+        else {
+            decParts = parts[0].split("/");
+            parts[0] = 0;
+        }
+        return parseInt(parts[0], 10) + (parseInt(decParts[0], 10) / parseInt(decParts[1], 10))
+    } else {
+        return x
+    }
+}
+
+// console.log(toDecimal("1 1/4"))
+// console.log(toDecimal(100))
