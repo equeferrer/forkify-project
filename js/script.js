@@ -493,6 +493,9 @@ function deleteLike(id) {
 };
 
 function numberToFraction(amount) {
+    if (!isNaN(amount)){
+        return amount
+    }
 	// This is a whole number and doesn't need modification.
 	if (parseFloat(amount) === parseInt(amount) ) {
 		return amount;
@@ -547,4 +550,3 @@ function toDecimal(x) {
 }
 
 // console.log(toDecimal("1 1/4"))
-// console.log(toDecimal(100))
