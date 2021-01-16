@@ -550,4 +550,3 @@ function toDecimal(x) {
 }
 
 // console.log(toDecimal("1 1/4"))
-// console.log(toDecimal(100))
