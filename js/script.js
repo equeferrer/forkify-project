@@ -60,6 +60,21 @@ window.addEventListener('load', () => {
 // change highlighted or active status for chosen recipe
 ["hashchange", "load"].forEach(event => window.addEventListener(event, controlRecipe));
 
+
+// for local storage of bookmarks
+window.addEventListener('load', () => {
+	state.bookmark = new Bookmark();
+	//restoring our likes
+	state.bookmark.readStorage();
+	//toggle the heart button up top
+	toggleLikeMenu(state.bookmark.getNumLikes());
+	//render the existing likes
+	state.bookmark.bookmark.forEach(like => createLiked(like));
+});
+
+// change highlighted or active status for chosen recipe
+["hashchange", "load"].forEach(event => window.addEventListener(event, controlRecipe));
+
 /* ---------------------- CLASSES ---------------------- */
 let Search = class {
     constructor(query) {
@@ -545,6 +560,7 @@ function numberToFraction(amount) {
     // }
 	let base = 0;
     // converting into mixed fractions    
+
 	if (numerator > denominator) {
 		base = Math.floor(numerator / denominator);
 		numerator -= base * denominator;
@@ -562,6 +578,7 @@ function toDecimal(x) {
 	} else if (x.indexOf('/') !== -1) {
         let parts = x.split(" ")
         let decParts;
+
         if (parts.length > 1) {
             decParts = parts[1].split("/");
         }
@@ -574,3 +591,4 @@ function toDecimal(x) {
         return x
     }
 }
+
