@@ -38,13 +38,28 @@ resRecipe.addEventListener("click", e => {
 })
 
 // for shopping list
-shopList.addEventListener("click", e => {
-    const shop = e.target.closest(".shopping__delete");
-    if (shop) {
-        const item = shop.parentElement;
-        item.parentElement.removeChild(item);
-    }
-})
+// shopList.addEventListener("click", e => {
+//     const shop = e.target.closest(".shopping__delete");
+//     if (shop) {
+//         const item = shop.parentElement;
+//         item.parentElement.removeChild(item);
+//     }
+// })
+
+// for local storage of bookmarks
+window.addEventListener('load', () => {
+	state.bookmark = new Bookmark();
+	//restoring our likes
+	state.bookmark.readStorage();
+	//toggle the heart button up top
+	toggleLikeMenu(state.bookmark.getNumLikes());
+	//render the existing likes
+	state.bookmark.bookmark.forEach(like => createLiked(like));
+});
+
+// change highlighted or active status for chosen recipe
+["hashchange", "load"].forEach(event => window.addEventListener(event, controlRecipe));
+
 
 // for local storage of bookmarks
 window.addEventListener('load', () => {
@@ -240,7 +255,7 @@ function createRecipe(item) {
     // null will not be shown for quantity
     const thisQty = state.newRecipe.result.ingredients;
     thisQty.forEach(i => {
-        if (i.step === null) {
+        if (i.step === null || i.step === "") {
             i.step = "";
         } else {
             i.step = i.frac
@@ -414,7 +429,7 @@ function showShoppingList(item) {
                     <p>${item.unit}</p>
                 </div>
                 <p class="shopping__description">${item.description}</p>
-                <button class="shopping__delete btn-tiny">
+                <button class="shopping__delete btn-tiny" onclick='deleteShopping("${item.description}")'>
                     <svg>
                         <use href="img/icons.svg#icon-circle-with-cross"></use>
                     </svg>
@@ -423,6 +438,15 @@ function showShoppingList(item) {
         `;
     const shoppingDiv = document.querySelector('.shopping__list');
     shoppingDiv.insertAdjacentHTML('afterbegin', shoppingList);
+}
+
+function deleteShopping(description){
+    console.log(description);
+    let index = state.shoppingList.findIndex(el => el.description === description);
+    state.shoppingList.splice(index, 1);
+    let item = document.querySelector(`[data-itemid=${description.replace(/ |\/|"|[0-9]/g, "")}]`)
+    console.log(item)
+    item.parentElement.removeChild(item);
 }
 
 function updateQuantity(newNum) {
@@ -515,31 +539,46 @@ function numberToFraction(amount) {
 		}
 		return gcd(b, Math.floor(a % b));
 	};
-	var len = amount.toString().length - 2;
-	var denominator = Math.pow(10, len);
-	var numerator = amount * denominator;
-	var divisor = gcd(numerator, denominator);
+	let length = amount.toString().length - 2;
+	let denominator = Math.pow(10, length);
+	let numerator = amount * denominator;
+	let divisor = gcd(numerator, denominator);
 	numerator /= divisor;
-	denominator /= divisor;
-	var base = 0;
-    // converting into mixed fractions
+    denominator /= divisor;
+    // if (numerator > 100 && denominator > 100){
+    //     let numLength = (numerator.toString().length - 2)
+    //     let numDivide = Math.pow(10, numLength);
+    //     numerator = numerator/numDivide
+    //     numerator = numerator.toFixed()
+    //     console.log(numerator)
+
+    //     let divLength = (denominator.toString().length - 2)
+    //     let divDivide = Math.pow(10, divLength);
+    //     denominator = denominator/divDivide
+    //     denominator = denominator.toFixed()
+    //     console.log(denominator)
+    // }
+	let base = 0;
+    // converting into mixed fractions    
+
 	if (numerator > denominator) {
 		base = Math.floor(numerator / denominator);
 		numerator -= base * denominator;
 	}
-	amount = Math.floor(numerator) + '/' + Math.floor(denominator);
+    amount = Math.floor(numerator) + '/' + Math.floor(denominator);
 	if ( base ) {
 		amount = base + ' ' + amount;
-	}
-	return amount;
+    }   
+    return amount;
 };
 
 function toDecimal(x) {
     if (parseFloat(x) === parseInt(x) && x % 1 === 0){
 		return x;
 	} else if (x.indexOf('/') !== -1) {
-        var parts = x.split(" ")
-        var decParts;
+        let parts = x.split(" ")
+        let decParts;
+
         if (parts.length > 1) {
             decParts = parts[1].split("/");
         }
@@ -552,3 +591,4 @@ function toDecimal(x) {
         return x
     }
 }
+
