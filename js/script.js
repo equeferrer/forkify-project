@@ -1,4 +1,3 @@
-// acts as storage
 const state = {
     shoppingList: [],
 }
@@ -38,14 +37,28 @@ resRecipe.addEventListener("click", e => {
     }
 })
 
-// for the shopping list
-shopList.addEventListener("click", e => {
-    const shop = e.target.closest(".shopping__delete");
-    if (shop) {
-        const item = shop.parentElement;
-        item.parentElement.removeChild(item);
-    }
-})
+// for shopping list
+// shopList.addEventListener("click", e => {
+//     const shop = e.target.closest(".shopping__delete");
+//     if (shop) {
+//         const item = shop.parentElement;
+//         item.parentElement.removeChild(item);
+//     }
+// })
+
+// for local storage of bookmarks
+window.addEventListener('load', () => {
+	state.bookmark = new Bookmark();
+	//restoring our likes
+	state.bookmark.readStorage();
+	//toggle the heart button up top
+	toggleLikeMenu(state.bookmark.getNumLikes());
+	//render the existing likes
+	state.bookmark.bookmark.forEach(like => createLiked(like));
+});
+
+// change highlighted or active status for chosen recipe
+["hashchange", "load"].forEach(event => window.addEventListener(event, controlRecipe));
 
 /* ---------------------- CLASSES ---------------------- */
 let Search = class {
@@ -91,6 +104,8 @@ let RecipeDetails = class {
             const thisData = await res.json();
             this.result = thisData.data.recipe;
             this.result.ingredients.forEach(ing => ing.step = ing.quantity);
+            this.result.ingredients.forEach(ing => ing.frac = numberToFraction(ing.quantity));
+
     } catch (err) {
             console.log(err);
             alert("Something went wrong");
@@ -105,13 +120,13 @@ let Bookmark = class {
     addLike(id, title, author, img) {
         const like = { id, title, author, img };
         this.bookmark.push(like);
-        // this.storeData();
+        this.storeData();
         return like;
     }
     deleteLike(id) {
         const index = this.bookmark.findIndex(el => el.id === id);
         this.bookmark.splice(index, 1);
-        // this.storeData();
+        this.storeData();
     }
     isLiked(id) {
         return this.bookmark.findIndex(el => el.id === id) !== -1;
@@ -119,14 +134,14 @@ let Bookmark = class {
     getNumLikes() {
         return this.bookmark.length;
     }
-    // storeData() {
-    //     localStorage.setItem("bookmark", JSON.stringify(this.bookmark));
-    // }
-    // readStorage() {
-    //     const storage = JSON.parse(localStorage.getItem("bookmark"));
-    //     //Restoring likes from the localStorage
-    //     if (storage) this.bookmark = storage;
-    // }
+    storeData() {
+        localStorage.setItem("bookmark", JSON.stringify(this.bookmark));
+    }
+    readStorage() {
+        const storage = JSON.parse(localStorage.getItem("bookmark"));
+        //Restoring likes from the localStorage
+        if (storage) this.bookmark = storage;
+    }
 }
 
 /* ---------------------- FUNCTIONS ---------------------- */
@@ -179,8 +194,6 @@ function controlRecipe() {
     }
 }
 
-["hashchange", "load"].forEach(event => window.addEventListener(event, controlRecipe));
-
 function createItem(recipe){
     const recipeItem = 
         `
@@ -227,8 +240,10 @@ function createRecipe(item) {
     // null will not be shown for quantity
     const thisQty = state.newRecipe.result.ingredients;
     thisQty.forEach(i => {
-        if (i.step === null) {
+        if (i.step === null || i.step === "") {
             i.step = "";
+        } else {
+            i.step = i.frac
         }
     })
 
@@ -370,18 +385,22 @@ function addToList() {
     let ingredient = state.newRecipe.result.ingredients;
     for (let i=0; i<ingredient.length; i++) {
         let found = state.shoppingList.some(elem => elem.description === ingredient[i].description);
-        // let unit = state.shoppingList.some(elem => elem.unit === ingredient[i].unit)
         if (!found){
+            ingredient[i].step = toDecimal(`${ingredient[i].step}`)
             state.shoppingList.push(ingredient[i])
             showShoppingList(ingredient[i])
-            console.log(state.shoppingList)
+            // console.log(state.shoppingList)
         } else if (found) {         
             const index = state.shoppingList.findIndex(el => el.description === ingredient[i].description);
-            let listItem = document.querySelector(`[data-itemid=${ingredient[i].description.replace(/ /g, "-")}]`)
-            listItem.firstElementChild.firstElementChild.value = `${parseFloat(state.shoppingList[index].quantity) + ingredient[i].step}`
-            state.shoppingList[index].quantity = state.shoppingList[index].quantity + ingredient[i].step
-            console.log(ingredient[i].step)
-            console.log(state.shoppingList[index].quantity);
+            let listItem = document.querySelector(`[data-itemid=${ingredient[i].description.replace(/ |\/|"|[0-9]/g, "")}]`)
+            if (state.shoppingList[index].unit === ingredient[i].unit){
+                listItem.firstElementChild.firstElementChild.value = parseFloat(state.shoppingList[index].quantity) + parseFloat(toDecimal(`${ingredient[i].step}`))
+                state.shoppingList[index].quantity = state.shoppingList[index].quantity + parseFloat(toDecimal(`${ingredient[i].step}`))    
+            } else if (state.shoppingList[index].unit !== ingredient[i].unit){
+                ingredient[i].step = toDecimal(`${ingredient[i].step}`)
+                state.shoppingList.push(ingredient[i])
+                showShoppingList(ingredient[i])
+            }
         }
     }
 }
@@ -389,13 +408,13 @@ function addToList() {
 function showShoppingList(item) {
     const shoppingList = 
         `
-            <li class="shopping__item" data-itemid=${item.description.replace(/ /g, "-")}>
+            <li class="shopping__item" data-itemid=${item.description.replace(/ |\/|"|[0-9]/g, "")}>
                 <div class="shopping__count">
                     <input type="number" value="${item.step}" step="${item.step/4}">
                     <p>${item.unit}</p>
                 </div>
                 <p class="shopping__description">${item.description}</p>
-                <button class="shopping__delete btn-tiny">
+                <button class="shopping__delete btn-tiny" onclick='deleteShopping("${item.description}")'>
                     <svg>
                         <use href="img/icons.svg#icon-circle-with-cross"></use>
                     </svg>
@@ -404,6 +423,15 @@ function showShoppingList(item) {
         `;
     const shoppingDiv = document.querySelector('.shopping__list');
     shoppingDiv.insertAdjacentHTML('afterbegin', shoppingList);
+}
+
+function deleteShopping(description){
+    console.log(description);
+    let index = state.shoppingList.findIndex(el => el.description === description);
+    state.shoppingList.splice(index, 1);
+    let item = document.querySelector(`[data-itemid=${description.replace(/ |\/|"|[0-9]/g, "")}]`)
+    console.log(item)
+    item.parentElement.removeChild(item);
 }
 
 function updateQuantity(newNum) {
@@ -415,8 +443,9 @@ function updateQuantity(newNum) {
         if (num.step === "") {
             num.step = "";
         } else {
-            num.step = (num.step * newNum) / servings; // (previousQty * newQty) / defaultNumberOfServing
+            num.step = (toDecimal(`${num.step}`) * newNum) / servings; // (previousQty * newQty) / defaultNumberOfServing
             state.newRecipe.result.servings = newNum;
+            num.frac = numberToFraction((toDecimal(`${num.frac}`) * newNum) / servings)
         }
     })
 }
@@ -460,8 +489,6 @@ function toggleLikeMenu(numLikes){
     }
 };
 
-toggleLikeMenu(0);
-
 function createLiked(item){
     const markup = `
     <li>
@@ -486,6 +513,64 @@ function deleteLike(id) {
     }
 };
 
-let frac = new Fraction(0.3435);
+function numberToFraction(amount) {
+	// If whole number OR if amount is not a number, return amount
+	if (parseFloat(amount) === parseInt(amount) || isNaN(parseFloat(amount))) {
+		return amount;
+	}
+	let gcd = function(a, b) {
+		if (b < 0.0000001) {
+			return a;
+		}
+		return gcd(b, Math.floor(a % b));
+	};
+	let length = amount.toString().length - 2;
+	let denominator = Math.pow(10, length);
+	let numerator = amount * denominator;
+	let divisor = gcd(numerator, denominator);
+	numerator /= divisor;
+    denominator /= divisor;
+    // if (numerator > 100 && denominator > 100){
+    //     let numLength = (numerator.toString().length - 2)
+    //     let numDivide = Math.pow(10, numLength);
+    //     numerator = numerator/numDivide
+    //     numerator = numerator.toFixed()
+    //     console.log(numerator)
 
-console.log(frac.toString());
+    //     let divLength = (denominator.toString().length - 2)
+    //     let divDivide = Math.pow(10, divLength);
+    //     denominator = denominator/divDivide
+    //     denominator = denominator.toFixed()
+    //     console.log(denominator)
+    // }
+	let base = 0;
+    // converting into mixed fractions    
+	if (numerator > denominator) {
+		base = Math.floor(numerator / denominator);
+		numerator -= base * denominator;
+	}
+    amount = Math.floor(numerator) + '/' + Math.floor(denominator);
+	if ( base ) {
+		amount = base + ' ' + amount;
+    }   
+    return amount;
+};
+
+function toDecimal(x) {
+    if (parseFloat(x) === parseInt(x) && x % 1 === 0){
+		return x;
+	} else if (x.indexOf('/') !== -1) {
+        let parts = x.split(" ")
+        let decParts;
+        if (parts.length > 1) {
+            decParts = parts[1].split("/");
+        }
+        else {
+            decParts = parts[0].split("/");
+            parts[0] = 0;
+        }
+        return parseInt(parts[0], 10) + (parseInt(decParts[0], 10) / parseInt(decParts[1], 10))
+    } else {
+        return x
+    }
+}
